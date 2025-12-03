@@ -38,14 +38,6 @@
         },
         {
             "name": "x64-release",
-            "displayName": "x64 Release",
-            "inherits": "x64-debug",
-            "cacheVariables": {
-              "CMAKE_BUILD_TYPE": "Release"
-            }
-        },
-        {
-            "name": "x64-release",
             "description": "x64 Release preset",
             "generator": "Visual Studio 18 2026",
             "architecture": "x64",

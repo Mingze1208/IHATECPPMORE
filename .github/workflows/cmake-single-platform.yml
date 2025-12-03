@@ -1,4 +1,3 @@
-# GitHub Actions Workflow for CMake project on Windows, using Preset (x64-release)
 name: CMake on a single platform
 
 on:
@@ -17,17 +16,17 @@ jobs:
     - name: Setup MSVC
       uses: ilammy/msvc-dev-cmd@v1
 
-    - name: Configure CMake (x64 Release)
-      run: cmake --preset x64-release
+    - name: Configure CMake (x64 Debug)
+      run: cmake --preset x64-debug
 
-    - name: Build (x64 Release)
-      run: cmake --build --preset x64-release
+    - name: Build (x64 Debug)
+      run: cmake --build --preset x64-debug
 
     - name: Test
-      run: ctest --preset x64-release
+      run: ctest --preset x64-debug
 
     - name: Upload executable
       uses: actions/upload-artifact@v4
       with:
-        name: windows-exe
-        path: out/build/x64-release/*.exe
+        name: windows-exe-debug
+        path: out/build/x64-debug/*.exe

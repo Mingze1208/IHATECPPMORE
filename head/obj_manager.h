@@ -6,7 +6,6 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <cstdint>
-#include <limits>
 
 #include "object_token.h"
 
@@ -30,25 +29,18 @@ public:
 
     using ObjToken = ::ObjToken;
 
-    // PendingToken: 表示一个尚未合并为真实 ObjToken 的创建请求句柄
-    struct PendingToken {
-        uint32_t id = std::numeric_limits<uint32_t>::max(); // invalid
-        static PendingToken Invalid() noexcept { return PendingToken{}; }
-        bool IsValid() const noexcept { return id != std::numeric_limits<uint32_t>::max(); }
-    };
-
-    // CreateImmediate: 立即构造对象并调用 Start()，但对象合并到内部容器并生成真实 ObjToken 会在下一帧 UpdateAll 的提交阶段完成。
+    // Create: 立即构造对象并调用 Start()，但对象合并到内部容器并生成真实 ObjToken 会在下一帧 UpdateAll 的提交阶段完成。
     // 返回 PendingToken 以便调用方追踪 pending 对象，并在合并后通过 ResolvePending 获取真实 ObjToken。
     template <typename T, typename... Args>
-    PendingToken CreateImmediate(Args&&... args)
+    ObjToken Create(Args&&... args)
     {
         static_assert(std::is_base_of<BaseObject, T>::value, "T must derive from BaseObject");
-        return CreateInit<T>([](T*) {}, std::forward<Args>(args)...);
+        return Create<T>([](T*) {}, std::forward<Args>(args)...);
     }
 
-    // CreateInit: 允许在构造后、Start() 前对对象进行初始化的版本，返回 PendingToken。
+    // Create: 允许在构造后、Start() 前对对象进行初始化的版本，返回 PendingToken。
     template <typename T, typename Init, typename... Args>
-    PendingToken CreateInit(Init&& initializer, Args&&... args)
+    ObjToken Create(Init&& initializer, Args&&... args)
     {
         static_assert(std::is_base_of<BaseObject, T>::value, "T must derive from BaseObject");
         static_assert(std::is_invocable_v<Init, T*>, "initializer must be callable with T*");
@@ -59,27 +51,15 @@ public:
         return CreateEntry(std::move(obj));
     }
 
-    // 通过 token 获取对象指针（可能返回 nullptr，如果 token 无效或对象已被销毁）
-    BaseObject* Get(const ObjToken& token) noexcept;
-    template <typename T>
-    T* GetAs(const ObjToken& token) noexcept { return static_cast<T*>(Get(token)); }
-
     bool IsValid(const ObjToken& token) const noexcept;
 
     // operator[] 重载：通过 ObjToken 直接取得对象的左值引用。
     // 语义：若 token 无效或对象已被销毁，会抛出 std::out_of_range（并写入 std::cerr）。
-    BaseObject& operator[](const ObjToken& token);
-    const BaseObject& operator[](const ObjToken& token) const;
+    BaseObject& operator[](ObjToken& token);
+    const BaseObject& operator[](ObjToken& token) const;
 
-    // ResolvePending: 合并完成后使用 PendingToken 查询真实 ObjToken；若尚未合并或不存在返回 Invalid ObjToken
-    ObjToken ResolvePending(const PendingToken& p) const noexcept;
-
-    // DestroyPending: 如果 pending 尚未合并，可直接销毁 pending 对象
-    void DestroyPending(const PendingToken& p) noexcept;
-
-    // Destroy: 将销毁请求入队（对于已合并对象），实际删除在下一次 UpdateAll 时执行；对于 pending 对象请使用 DestroyPending。
-    void Destroy(BaseObject* ptr) noexcept;
-    void Destroy(const ObjToken& token) noexcept;
+    // 支持以 PendingToken 直接销毁（若已合并则转为销毁真实 ObjToken，否则销毁 pending）
+    void Destroy(const ObjToken& p) noexcept;
 
     // DestroyAll: 立即销毁所有对象并清理所有挂起队列，通常在程序退出或重置时调用。
     void DestroyAll() noexcept;
@@ -116,10 +96,16 @@ private:
 
     // 内部立即销毁实现（按 index）。
     void DestroyEntry(uint32_t index) noexcept;
+    // DestroyPending: 如果 pending 尚未合并，可直接销毁 pending 对象
+    void DestroyPending(const ObjToken& p) noexcept;
+    // DestroyExisting: 将销毁请求入队（对于已合并对象），实际删除在下一次 UpdateAll 时执行；对于 pending 对象请使用 DestroyPending。
+    void DestroyExisting(const ObjToken& token) noexcept;
 
     // 将 unique_ptr<BaseObject> 的对象纳入管理并在必要时调用 Start()，返回 PendingToken 表示创建请求。
     // 对象会被放入 pending_creates_（带 id），在 UpdateAll 的提交阶段合并到 objects_ 并完成物理注册。
-    PendingToken CreateEntry(std::unique_ptr<BaseObject> obj);
+    ObjToken CreateEntry(std::unique_ptr<BaseObject> obj);
+
+	ObjToken check_pending_to_real(const ObjToken& p) const noexcept;
 
     // 存储对象条目
     std::vector<Entry> objects_;

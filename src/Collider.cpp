@@ -415,8 +415,9 @@ void PhysicsSystem::Step(float cell_size) noexcept
 		auto prev_it = prev_collision_pairs_.find(pair_key);
 		const bool was_colliding = (prev_it != prev_collision_pairs_.end());
 
-		BaseObject* oa = ObjManager::Instance().Get(ev.a);
-		BaseObject* ob = ObjManager::Instance().Get(ev.b);
+		// 使用 token-based 的 operator[] 获取对象引用（在前面已通过 IsValid 校验，operator[] 不应抛出）
+		BaseObject& oa = ObjManager::Instance()[ev.a];
+		BaseObject& ob = ObjManager::Instance()[ev.b];
 
 #if COLLISION_DEBUG
 		static int enterCount = 0;
@@ -426,18 +427,14 @@ void PhysicsSystem::Step(float cell_size) noexcept
 
 			std::cerr << "[Physics] Enter collision (detailed): a=" << ev.a.index << " b=" << ev.b.index << "\n";
 
-			if (oa && ob) {
-				const CF_ShapeWrapper& aworld = world_shapes_[ev.a.index];
-				const CF_ShapeWrapper& bworld = world_shapes_[ev.b.index];
+			// 既然通过 IsValid() 保证了 token 有效，这里直接访问 world_shapes_
+			const CF_ShapeWrapper& aworld = world_shapes_[ev.a.index];
+			const CF_ShapeWrapper& bworld = world_shapes_[ev.b.index];
 
-				std::cerr << "  A (world):\n";
-				dump_shape_world(aworld);
-				std::cerr << "  B (world):\n";
-				dump_shape_world(bworld);
-			}
-			else {
-				std::cerr << "  Warning: one of objects is null when printing detailed shapes\n";
-			}
+			std::cerr << "  A (world):\n";
+			dump_shape_world(aworld);
+			std::cerr << "  B (world):\n";
+			dump_shape_world(bworld);
 
 			std::cerr << "  manifold.count=" << ev.manifold.count
 				<< " normal=(" << ev.manifold.n.x << "," << ev.manifold.n.y << ")\n";
@@ -450,21 +447,19 @@ void PhysicsSystem::Step(float cell_size) noexcept
 		}
 #endif
 
-		if (oa) {
-			if (was_colliding) {
-				oa->OnCollisionState(ev.b, ev.manifold, BaseObject::CollisionPhase::Stay);
-			}
-			else {
-				oa->OnCollisionState(ev.b, ev.manifold, BaseObject::CollisionPhase::Enter);
-			}
+		// 直接以引用调用回调
+		if (was_colliding) {
+			oa.OnCollisionState(ev.b, ev.manifold, BaseObject::CollisionPhase::Stay);
 		}
-		if (ob) {
-			if (was_colliding) {
-				ob->OnCollisionState(ev.a, ev.manifold, BaseObject::CollisionPhase::Stay);
-			}
-			else {
-				ob->OnCollisionState(ev.a, ev.manifold, BaseObject::CollisionPhase::Enter);
-			}
+		else {
+			oa.OnCollisionState(ev.b, ev.manifold, BaseObject::CollisionPhase::Enter);
+		}
+
+		if (was_colliding) {
+			ob.OnCollisionState(ev.a, ev.manifold, BaseObject::CollisionPhase::Stay);
+		}
+		else {
+			ob.OnCollisionState(ev.a, ev.manifold, BaseObject::CollisionPhase::Enter);
 		}
 	}
 
@@ -478,15 +473,12 @@ void PhysicsSystem::Step(float cell_size) noexcept
 
 			if (!ObjManager::Instance().IsValid(ta) || !ObjManager::Instance().IsValid(tb)) continue;
 
-			BaseObject* oa = ObjManager::Instance().Get(ta);
-			BaseObject* ob = ObjManager::Instance().Get(tb);
+			// 使用 operator[] 获取引用（已校验）
+			BaseObject& oa = ObjManager::Instance()[ta];
+			BaseObject& ob = ObjManager::Instance()[tb];
 
-			if (oa) {
-				oa->OnCollisionState(tb, CF_Manifold{}, BaseObject::CollisionPhase::Exit);
-			}
-			if (ob) {
-				ob->OnCollisionState(ta, CF_Manifold{}, BaseObject::CollisionPhase::Exit);
-			}
+			oa.OnCollisionState(tb, CF_Manifold{}, BaseObject::CollisionPhase::Exit);
+			ob.OnCollisionState(ta, CF_Manifold{}, BaseObject::CollisionPhase::Exit);
 		}
 	}
 	prev_collision_pairs_.swap(current_pairs_);

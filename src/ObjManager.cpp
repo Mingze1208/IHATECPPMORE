@@ -3,7 +3,6 @@
 #include <typeinfo>
 #include <iostream>
 #include <cstdint>
-#include <limits>
 #include <stdexcept>
 
 ObjManager::ObjManager() noexcept = default;
@@ -17,15 +16,6 @@ ObjManager & ObjManager::Instance() noexcept
 {
     static ObjManager inst;
     return inst;
-}
-
-BaseObject* ObjManager::Get(const ObjToken& token) noexcept
-{
-    if (token.index >= objects_.size()) return nullptr;
-    const Entry& e = objects_[token.index];
-    if (!e.alive) return nullptr;
-    if (e.generation != token.generation) return nullptr;
-    return e.ptr.get();
 }
 
 bool ObjManager::IsValid(const ObjToken& token) const noexcept
@@ -56,11 +46,11 @@ uint32_t ObjManager::ReserveSlotForCreate() noexcept
 
 // 将 unique_ptr<BaseObject> 纳入管理并立即启动（Start），但不直接扩展 objects_；
 // 对象被放入 pending_creates_，在 UpdateAll 的提交阶段合并到 objects_（安全点）。
-ObjManager::PendingToken ObjManager::CreateEntry(std::unique_ptr<BaseObject> obj)
+ObjManager::ObjToken ObjManager::CreateEntry(std::unique_ptr<BaseObject> obj)
 {
     if (!obj) {
         std::cerr << "[InstanceController] CreateEntry: factory returned nullptr\n";
-        return PendingToken::Invalid();
+        return ObjToken::Invalid();
     }
 
     BaseObject* raw = obj.get();
@@ -71,7 +61,7 @@ ObjManager::PendingToken ObjManager::CreateEntry(std::unique_ptr<BaseObject> obj
     }
     catch (...) {
         std::cerr << "[InstanceController] CreateEntry: Start() threw for object at " << static_cast<const void*>(raw) << " (pending)\n";
-        return PendingToken::Invalid();
+        return ObjToken::Invalid();
     }
 
     // 分配 pending id 并将对象放入 pending 创建区；此时不向 objects_ 添加条目以避免在更新循环中触发 vector 重分配导致迭代器失效。
@@ -83,8 +73,9 @@ ObjManager::PendingToken ObjManager::CreateEntry(std::unique_ptr<BaseObject> obj
     std::cerr << "[InstanceController] CreateEntry: created pending object at " << static_cast<const void*>(raw)
         << " (pending id=" << pid << ", commit next-frame)\n";
 
-    PendingToken token;
-    token.id = pid;
+    ObjToken token;
+    token.index = pid;
+	token.isRegitsered = false;
     return token;
 }
 
@@ -121,68 +112,31 @@ void ObjManager::DestroyEntry(uint32_t index) noexcept
     // 增加 generation 使旧 token 失效
     ++e.generation;
 
+    // 清理所有指向该真实 index 的 pending -> real 映射，避免悬挂映射与内存增长
+    for (auto it = pending_to_real_map_.begin(); it != pending_to_real_map_.end(); ) {
+        if (it->second.index == index) {
+            std::cerr << "[InstanceController] DestroyEntry: removing pending_to_real_map_ entry for pending id="
+                      << it->first << " -> index=" << index << "\n";
+            it = pending_to_real_map_.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
     free_indices_.push_back(index);
 
     if (alive_count_ > 0) --alive_count_;
 }
 
-void ObjManager::Destroy(BaseObject* ptr) noexcept
-{
-    if (!ptr) return;
-
-    // 先尝试通过映射找到索引并构造 token（仅包含已合并到 objects_ 的对象）
-    auto it = object_index_map_.find(ptr);
-    if (it != object_index_map_.end()) {
-        uint32_t index = it->second;
-        if (index < objects_.size() && objects_[index].ptr.get() == ptr) {
-            ObjToken tok{ index, objects_[index].generation };
-            Destroy(tok); // 使用延迟销毁路径入队
-            return;
-        }
-    }
-
-    // 如果对象尚处于 pending 创建区，直接移除并销毁
-    auto pit = pending_ptr_to_id_.find(ptr);
-    if (pit != pending_ptr_to_id_.end()) {
-        uint32_t pid = pit->second;
-        auto pcit = pending_creates_.find(pid);
-        if (pcit != pending_creates_.end()) {
-            // 调用 OnDestroy 让对象清理自身资源
-            pcit->second.ptr->OnDestroy();
-            // 若意外存在 token，置为 Invalid（通常 pending 对象尚未被赋 token）
-            pcit->second.ptr->SetObjToken(ObjToken::Invalid());
-            // 移除 pending 记录（unique_ptr 被释放）
-            pending_creates_.erase(pcit);
-            pending_ptr_to_id_.erase(pit);
-            if (alive_count_ > 0) --alive_count_;
-            std::cerr << "[InstanceController] Destroy: destroyed pending object at " << static_cast<const void*>(ptr) << " (pending id=" << pid << ")\n";
-            return;
-        }
-    }
-
-    // 映射未命中则做线性查找以兼容异常情况（仅检查已合并对象）
-    for (uint32_t i = 0; i < objects_.size(); ++i) {
-        Entry& e = objects_[i];
-        if (e.ptr && e.ptr.get() == ptr) {
-            ObjToken tok{ i, e.generation };
-            Destroy(tok); // 使用延迟销毁路径入队
-            return;
-        }
-    }
-
-    std::cerr << "[InstanceController] Destroy: target not found at "
-              << static_cast<const void*>(ptr) << "\n";
-}
-
-void ObjManager::Destroy(const ObjToken& token) noexcept
+void ObjManager::DestroyExisting(const ObjToken& token) noexcept
 {
     if (token.index >= objects_.size()) {
-        std::cerr << "[InstanceController] Destroy(token): invalid index " << token.index << "\n";
+        std::cerr << "[InstanceController] DestroyExisting(token): invalid index " << token.index << "\n";
         return;
     }
     const Entry& e = objects_[token.index];
     if (!e.alive || e.generation != token.generation) {
-        std::cerr << "[InstanceController] Destroy(token): token invalid or object not alive (index="
+        std::cerr << "[InstanceController] DestroyExisting(token): token invalid or object not alive (index="
             << token.index << ", gen=" << token.generation << ")\n";
         return;
     }
@@ -191,13 +145,44 @@ void ObjManager::Destroy(const ObjToken& token) noexcept
     uint64_t key = (static_cast<uint64_t>(token.index) << 32) | token.generation;
     if (pending_destroy_set_.insert(key).second) {
         pending_destroys_.push_back(token);
-        std::cerr << "[InstanceController] Destroy: enqueued destroy for index=" << token.index
+        std::cerr << "[InstanceController] DestroyExisting: enqueued destroy for index=" << token.index
             << " gen=" << token.generation << "\n";
     }
     else {
-        std::cerr << "[InstanceController] Destroy: already enqueued for index=" << token.index
+        std::cerr << "[InstanceController] DestroyExisting: already enqueued for index=" << token.index
             << " gen=" << token.generation << "\n";
     }
+}
+
+void ObjManager::DestroyPending(const ObjToken& p) noexcept
+{
+    if (!p.isValid()) return;
+    if (p.isRegitsered)return;
+
+    auto it = pending_creates_.find(p.index);
+    if (it == pending_creates_.end()) return;
+    BaseObject* raw = it->second.ptr.get();
+    // 调用 OnDestroy 让对象清理自身资源
+    it->second.ptr->OnDestroy();
+    // 若意外存在 token，置为 Invalid（通常 pending 对象尚未被赋 token）
+    it->second.ptr->SetObjToken(ObjToken::Invalid());
+    // 移除 pending 记录
+    pending_creates_.erase(it);
+    pending_ptr_to_id_.erase(raw);
+    if (alive_count_ > 0) --alive_count_;
+    std::cerr << "[InstanceController] DestroyPending: destroyed pending id=" << p.index << " at " << static_cast<const void*>(raw) << "\n";
+}
+
+void ObjManager::Destroy(const ObjToken& p) noexcept
+{
+    // 如果 pending 已合并为真实 token，则把真实 token 入队销毁（按 Destroy(ObjToken) 的流程）
+    if (p.isRegitsered) {
+        DestroyExisting(p);
+        return;
+    }
+
+    // 尚未合并：直接销毁 pending 对象（调用现有实现）
+    DestroyPending(p);
 }
 
 void ObjManager::DestroyAll() noexcept
@@ -328,7 +313,7 @@ void ObjManager::UpdateAll() noexcept
 
             // 注册索引映射并注册到物理系统
             object_index_map_[raw] = index;
-            ObjManager::ObjToken tok{ index, objects_[index].generation };
+            ObjManager::ObjToken tok{ index, objects_[index].generation, true };
             PhysicsSystem::Instance().Register(tok, raw);
 
             // 将真实 token 写入对象（ObjManager 为 friend，允许调用 private SetObjToken）
@@ -351,37 +336,20 @@ void ObjManager::UpdateAll() noexcept
     }
 }
 
-ObjManager::ObjToken ObjManager::ResolvePending(const PendingToken& p) const noexcept
-{
-    if (!p.IsValid()) return ObjToken::Invalid();
-    auto it = pending_to_real_map_.find(p.id);
-    if (it != pending_to_real_map_.end()) {
-        return it->second;
-    }
-    // 尚未合并或不存在，返回 Invalid
-    return ObjToken::Invalid();
-}
-
-void ObjManager::DestroyPending(const PendingToken& p) noexcept
-{
-    if (!p.IsValid()) return;
-    auto it = pending_creates_.find(p.id);
-    if (it == pending_creates_.end()) return;
-    BaseObject* raw = it->second.ptr.get();
-    // 调用 OnDestroy 让对象清理自身资源
-    it->second.ptr->OnDestroy();
-    // 若意外存在 token，置为 Invalid（通常 pending 对象尚未被赋 token）
-    it->second.ptr->SetObjToken(ObjToken::Invalid());
-    // 移除 pending 记录
-    pending_creates_.erase(it);
-    pending_ptr_to_id_.erase(raw);
-    if (alive_count_ > 0) --alive_count_;
-    std::cerr << "[InstanceController] DestroyPending: destroyed pending id=" << p.id << " at " << static_cast<const void*>(raw) << "\n";
-}
-
 // operator[] 实现：若 token 无效或对象不可用，则抛出 std::out_of_range（并写入 std::cerr）
-BaseObject& ObjManager::operator[](const ObjToken& token)
+BaseObject& ObjManager::operator[](ObjToken& token)
 {
+    if (!token.isRegitsered) {
+		auto it = pending_creates_.find(token.index);
+        if (it != pending_creates_.end()) {
+			BaseObject* raw = it->second.ptr.get();
+			std::cerr << "[InstanceController] operator[]: accessing pending object at " << static_cast<const void*>(raw) << "\n";
+			return *raw;
+        }
+        ObjToken real = check_pending_to_real(token);
+		std::cerr << "[InstanceController] operator[]: checked pending token, updating token to the registered version\n";
+        if (real.isValid()) token = real;
+    }
     if (token.index >= objects_.size()) {
         std::cerr << "[InstanceController] operator[]: invalid index " << token.index << "\n";
         throw std::out_of_range("ObjManager::operator[]: invalid index");
@@ -394,8 +362,19 @@ BaseObject& ObjManager::operator[](const ObjToken& token)
     return *e.ptr;
 }
 
-const BaseObject& ObjManager::operator[](const ObjToken& token) const
+const BaseObject& ObjManager::operator[](ObjToken& token) const
 {
+    if (!token.isRegitsered) {
+        auto it = pending_creates_.find(token.index);
+        if (it != pending_creates_.end()) {
+            BaseObject* raw = it->second.ptr.get();
+            std::cerr << "[InstanceController] operator[]: accessing pending object at " << static_cast<const void*>(raw) << "\n";
+            return *raw;
+        }
+        ObjToken real = check_pending_to_real(token);
+        std::cerr << "[InstanceController] operator[]: checked pending token, updating token to the registered version\n";
+        if (real.isValid()) token = real;
+    }
     if (token.index >= objects_.size()) {
         std::cerr << "[InstanceController] operator[] const: invalid index " << token.index << "\n";
         throw std::out_of_range("ObjManager::operator[] const: invalid index");
@@ -406,4 +385,14 @@ const BaseObject& ObjManager::operator[](const ObjToken& token) const
         throw std::out_of_range("ObjManager::operator[] const: token invalid or object not alive");
     }
     return *e.ptr;
+}
+
+ObjToken ObjManager::check_pending_to_real(const ObjToken& pending_token) const noexcept
+{
+	if (pending_token.isRegitsered) return pending_token;
+    auto it = pending_to_real_map_.find(pending_token.index);
+    if (it != pending_to_real_map_.end()) {
+        return it->second;
+    }
+    return ObjToken::Invalid();
 }

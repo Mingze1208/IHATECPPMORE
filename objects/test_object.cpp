@@ -4,19 +4,19 @@ static constexpr float force = 1.0f;
 
 void TestObject::Start()
 {
-	// ½öÉèÖÃÌùÍ¼Â·¾¶£¬ÆäËû²ÎÊýÊ¹ÓÃÄ¬ÈÏÖµ
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¼Â·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¹ï¿½ï¿½Ä¬ï¿½ï¿½Öµ
 	SpriteSetSource("/sprites/bullet.png", 1);
 }
 
 void TestObject::Update()
 {
-	// Ê¹ÓÃ BaseObject ±©Â¶µÄÎïÀí½Ó¿ÚÀ´ÐÞ¸ÄËÙ¶È/ÊÜÁ¦£º
-	// 1) ¸ù¾Ý°´¼üÌí¼ÓÁ¦£¨SetForce£©
-	// 2) ½«Á¦»ý·Öµ½ËÙ¶È£¨ApplyForce£©
-	// 3) ¿ÉÑ¡×èÄá£¨SetVelocity£©
-	// 4) ½«ËÙ¶È»ý·Öµ½Î»ÖÃ£¨ApplyVelocity£©
+	// ä½¿ç”¨ BaseObject æš´éœ²çš„ç‰©ç†æŽ¥å£æ¥ä¿®æ”¹é€Ÿåº¦/å—åŠ›ï¼š
+	// 1) æ ¹æ®æŒ‰é”®æ·»åŠ åŠ›ï¼ˆSetForceï¼‰
+	// 2) å°†åŠ›ç§¯åˆ†åˆ°é€Ÿåº¦ï¼ˆApplyForceï¼‰
+	// 3) å¯é€‰é˜»å°¼ï¼ˆSetVelocityï¼‰
+	// 4) å°†é€Ÿåº¦ç§¯åˆ†åˆ°ä½ç½®ï¼ˆApplyVelocityï¼‰
 
-	//Scale(3.0f);  // ·Å´ó2±¶£¬Äã¿ÉÒÔ¸ù¾ÝÐèÒªµ÷ÕûÊýÖµ
+	//Scale(3.0f);  // ï¿½Å´ï¿½2ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¸ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ
 
 	int dir = 0;
 	if (cf_key_down(CF_KEY_LEFT)) {
@@ -26,13 +26,13 @@ void TestObject::Update()
 		dir++;
 	}
 
-	// Ìí¼ÓÁ¦
+	// æ·»åŠ åŠ›
 	SetForce(dir * v2math::angled(CF_V2(force), GetRotation()));
 
-	// ¼òµ¥Ë®Æ½·½Ïò×èÄá£ºÎÞ°´¼üÊ±¼õËÙ£¬±ÜÃâÎÞÏÞ»¬¶¯
-	// ÕâÀïÊ¹ÓÃÒÑÓÐµÄËÙ¶È½Ó¿ÚÀ´¶ÁÈ¡/Ð´ÈëËÙ¶È
-	/*CF_V2 vel = GetVelocity();
-	constexpr float damping = 0.0f;
+	// ç®€å•æ°´å¹³æ–¹å‘é˜»å°¼ï¼šæ— æŒ‰é”®æ—¶å‡é€Ÿï¼Œé¿å…æ— é™æ»‘åŠ¨
+	// è¿™é‡Œä½¿ç”¨å·²æœ‰çš„é€Ÿåº¦æŽ¥å£æ¥è¯»å–/å†™å…¥é€Ÿåº¦
+	CF_V2 vel = GetVelocity();
+	constexpr float damping = 0.90f;
 	if (!cf_key_down(CF_KEY_LEFT) && !cf_key_down(CF_KEY_RIGHT)) {
 		vel *= damping;
 		SetVelocity(vel);

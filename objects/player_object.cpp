@@ -1,19 +1,19 @@
 #include "player_object.h"
 #include "test_object.h"
 
-// Ã¿Ö¡ÒÆ¶¯µÄËÙ¶È
+// æ¯å¸§ç§»åŠ¨çš„é€Ÿåº¦
 static constexpr float speed = 3.0f;
 const float PI = 3.14159265358979f;
 ObjToken test[9] = { ObjToken::Invalid() };
 int i = 0;
 void PlayerObject::Start()
 {
-	// Í³Ò»ÉèÖÃÌùÍ¼Â·¾¶¡¢ÊúÅÅÖ¡Êı¡¢¶¯»­¸üĞÂÆµÂÊºÍ»æÖÆÉî¶È£¬²¢×¢²áµ½»æÖÆĞòÁĞ
-	// ÈçĞèÒªÄ¬ÈÏÖµ£¬ÇëÊ¹ÓÃ¸ßÁ£¶ÈµÄ SetSprite*() ºÍ Set*() ·½·¨ÖğÒ»ÉèÖÃ·ÇÄ¬ÈÏÖµ²ÎÊı
-	// ×ÊÔ´Â·¾¶ÎŞÄ¬ÈÏÖµ£¬±ØĞëÊÖ¶¯ÉèÖÃ
+	// ç»Ÿä¸€è®¾ç½®è´´å›¾è·¯å¾„ã€ç«–æ’å¸§æ•°ã€åŠ¨ç”»æ›´æ–°é¢‘ç‡å’Œç»˜åˆ¶æ·±åº¦ï¼Œå¹¶æ³¨å†Œåˆ°ç»˜åˆ¶åºåˆ—
+	// å¦‚éœ€è¦é»˜è®¤å€¼ï¼Œè¯·ä½¿ç”¨é«˜ç²’åº¦çš„ SetSprite*() å’Œ Set*() æ–¹æ³•é€ä¸€è®¾ç½®éé»˜è®¤å€¼å‚æ•°
+	// èµ„æºè·¯å¾„æ— é»˜è®¤å€¼ï¼Œå¿…é¡»æ‰‹åŠ¨è®¾ç½®
     SpriteSetStats("/sprites/idle.png", 3, 7, 0);
 
-    // ¿ÉÑ¡£º³õÊ¼»¯Î»ÖÃ£¨¸ù¾İĞèÒªµ÷Õû£©£¬ÀıÈçÆÁÄ»ÖĞĞÄ¸½½ü
+    // å¯é€‰ï¼šåˆå§‹åŒ–ä½ç½®ï¼ˆæ ¹æ®éœ€è¦è°ƒæ•´ï¼‰ï¼Œä¾‹å¦‚å±å¹•ä¸­å¿ƒé™„è¿‘
     SetPosition(cf_v2(0.0f, 0.0f));
 
     Scale(0.5f);
@@ -22,7 +22,7 @@ void PlayerObject::Start()
 
 void PlayerObject::Update()
 {
-	// µ±¼ì²âµ½°´¼ü°´ÏÂÊ±£¬ÉèÖÃËÙ¶È·½Ïò£¨²»Ö±½Ó SetPosition£¬Ê¹ÓÃËÙ¶È»ı·Ö£©
+	// å½“æ£€æµ‹åˆ°æŒ‰é”®æŒ‰ä¸‹æ—¶ï¼Œè®¾ç½®é€Ÿåº¦æ–¹å‘ï¼ˆä¸ç›´æ¥ SetPositionï¼Œä½¿ç”¨é€Ÿåº¦ç§¯åˆ†ï¼‰
     CF_V2 dir(0,0);
     if (Input::IsKeyInState(CF_KEY_A, KeyState::Hold)) {
         dir.x -= 1;
@@ -36,32 +36,33 @@ void PlayerObject::Update()
     if (Input::IsKeyInState(CF_KEY_S, KeyState::Hold)) {
 		dir.y -= 1;
     }
+
     if (dir.x != 0) {
-		SpriteFlipX(dir.x < 0); // ¸ù¾İË®Æ½ÒÆ¶¯·½Ïò·­×ªÌùÍ¼
+		SpriteFlipX(dir.x < 0); // æ ¹æ®æ°´å¹³ç§»åŠ¨æ–¹å‘ç¿»è½¬è´´å›¾
         SpriteSetStats("/sprites/walk.png", 2, 7, 0, false);
     }
     else {
 		SpriteSetStats("/sprites/idle.png", 3, 7, 0, false);
     }
-	// ¹éÒ»»¯ËÙ¶ÈÏòÁ¿ÒÔ·À¶Ô½ÇÒÆ¶¯¹ı¿ì
-	dir = v2math::normalized(dir);
+
+    // å½’ä¸€åŒ–é€Ÿåº¦å‘é‡ä»¥é˜²å¯¹è§’ç§»åŠ¨è¿‡å¿«
+    dir = v2math::normalized(dir);
     CF_V2 vel = cf_v2(dir.x * speed, dir.y * speed);
 
-    // Ê¹ÓÃÎïÀí½Ó¿ÚÉèÖÃËÙ¶È£¬ÈÃ FramelyApply µÄ ApplyVelocity È¥ÒÆ¶¯²¢±£´æ prev_position
+    // ä½¿ç”¨ç‰©ç†æ¥å£è®¾ç½®é€Ÿåº¦ï¼Œè®© FramelyApply çš„ ApplyVelocity å»ç§»åŠ¨å¹¶ä¿å­˜ prev_position
     SetVelocity(vel);
 
-	// ¼ÆËã³¯Ïò½Ç¶È£¨»¡¶ÈÖÆ£¬0 ¶ÈÎªÕıÓÒ£¬ÄæÊ±ÕëĞı×ª£©
+	// è®¡ç®—æœå‘è§’åº¦ï¼ˆå¼§åº¦åˆ¶ï¼Œ0 åº¦ä¸ºæ­£å³ï¼Œé€†æ—¶é’ˆæ—‹è½¬ï¼‰
     float angle = 0;
     if (Input::IsKeyInState(CF_KEY_Q, KeyState::Hold)) {
-		angle += PI / 60.0f; // Ã¿Ö¡ÄæÊ±ÕëĞı×ª 3 ¶È
-		std::cout << GetRotation() << std::endl;
+		angle += PI / 60.0f; // æ¯å¸§é€†æ—¶é’ˆæ—‹è½¬ 3 åº¦
     }
     if (Input::IsKeyInState(CF_KEY_E, KeyState::Hold)) {
-		angle -= PI / 60.0f; // Ã¿Ö¡Ë³Ê±ÕëĞı×ª 3 ¶È
+		angle -= PI / 60.0f; // æ¯å¸§é¡ºæ—¶é’ˆæ—‹è½¬ 3 åº¦
     }
 	Rotate(angle);
-    //#INCLUDE <IOSTREAM> USING NAMESPACE STD;LINT MAIN I c
-	// °´¿Õ¸ñ¼ü·¢Éä TestObject ÊµÀı
+
+	// æŒ‰ç©ºæ ¼é”®å‘å°„ TestObject å®ä¾‹
     if (Input::IsKeyInState(CF_KEY_SPACE, KeyState::Down)) {
         if (objs.TryGetRegisteration(test[i])) {
 			objs.Destroy(test[i]);
@@ -70,13 +71,13 @@ void PlayerObject::Update()
         if (test_token.isValid()) test[i] = test_token;
         auto rot = GetRotation();
         int flip = (SpriteGetFlipX() ? -1 : 1);
-        //ÉÔÎ¢Ê¹×Óµ¯³õÊ¼Î»ÖÃÍùÏÂÒ»µã¡ªhkl
-         // »ñÈ¡Íæ¼Òµ±Ç°Î»ÖÃ
+        //ï¿½ï¿½Î¢Ê¹ï¿½Óµï¿½ï¿½ï¿½Ê¼Î»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ã¡ªhkl
+         // ï¿½ï¿½È¡ï¿½ï¿½Òµï¿½Ç°Î»ï¿½ï¿½
 
         CF_V2 playerPos = GetPosition();
 
-        // ¼ÆËã×Óµ¯Æ«ÒÆÎ»ÖÃ - ÏòÏÂÆ«ÒÆn¸öµ¥Î»
-        CF_V2 offset = v2math::angled(CF_V2(20.0f), rot + CF_PI / 2); // ÏòÏÂÆ«ÒÆ£¨´¹Ö±ÓÚ³¯Ïò£©
+        // ï¿½ï¿½ï¿½ï¿½ï¿½Óµï¿½Æ«ï¿½ï¿½Î»ï¿½ï¿½ - ï¿½ï¿½ï¿½ï¿½Æ«ï¿½ï¿½nï¿½ï¿½ï¿½ï¿½Î»
+        CF_V2 offset = v2math::angled(CF_V2(20.0f), rot + CF_PI / 2); // ï¿½ï¿½ï¿½ï¿½Æ«ï¿½Æ£ï¿½ï¿½ï¿½Ö±ï¿½Ú³ï¿½ï¿½ï¿½
 
 
         objs[test[i]].SetRotation(rot);
@@ -84,6 +85,6 @@ void PlayerObject::Update()
         objs[test[i]].SetPosition(GetPosition() - offset);
         objs[test[i]].SetVisible(true);
         objs[test[i]].SetVelocity(v2math::angled(CF_V2(30.0f), rot) * flip);
-		i = (i + 1) % 9; // ³¡ÉÏ½ö´æÔÚi¸ö TestObject ÊµÀı£¬Èô¶à³öÔòÏú»Ù×îÔçÉú³ÉµÄÄÇ¸ö
+		i = (i + 1) % 9; // ï¿½ï¿½ï¿½Ï½ï¿½ï¿½ï¿½ï¿½ï¿½iï¿½ï¿½ TestObject Êµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Éµï¿½ï¿½Ç¸ï¿½
     }
 }

@@ -4,7 +4,7 @@
 // 每帧移动的速度
 static constexpr float speed = 3.0f;
 const float PI = 3.14159265358979f;
-ObjToken test[3] = { ObjToken::Invalid() };
+ObjToken test[9] = { ObjToken::Invalid() };
 int i = 0;
 void PlayerObject::Start()
 {
@@ -60,7 +60,7 @@ void PlayerObject::Update()
 		angle -= PI / 60.0f; // 每帧顺时针旋转 3 度
     }
 	Rotate(angle);
-
+    //#INCLUDE <IOSTREAM> USING NAMESPACE STD;LINT MAIN I c
 	// 按空格键发射 TestObject 实例
     if (Input::IsKeyInState(CF_KEY_SPACE, KeyState::Down)) {
         if (objs.TryGetRegisteration(test[i])) {
@@ -70,11 +70,20 @@ void PlayerObject::Update()
         if (test_token.isValid()) test[i] = test_token;
         auto rot = GetRotation();
         int flip = (SpriteGetFlipX() ? -1 : 1);
+        //稍微使子弹初始位置往下一点—hkl
+         // 获取玩家当前位置
+
+        CF_V2 playerPos = GetPosition();
+
+        // 计算子弹偏移位置 - 向下偏移n个单位
+        CF_V2 offset = v2math::angled(CF_V2(20.0f), rot + CF_PI / 2); // 向下偏移（垂直于朝向）
+
+
         objs[test[i]].SetRotation(rot);
         objs[test[i]].SpriteFlipX(SpriteGetFlipX());
-        objs[test[i]].SetPosition(GetPosition());
+        objs[test[i]].SetPosition(GetPosition() - offset);
         objs[test[i]].SetVisible(true);
         objs[test[i]].SetVelocity(v2math::angled(CF_V2(30.0f), rot) * flip);
-		i = (i + 1) % 3; // 场上仅存在3个 TestObject 实例，若多出则销毁最早生成的那个
+		i = (i + 1) % 9; // 场上仅存在i个 TestObject 实例，若多出则销毁最早生成的那个
     }
 }

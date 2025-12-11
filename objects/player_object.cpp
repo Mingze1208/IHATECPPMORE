@@ -20,6 +20,8 @@ static std::unordered_map<const PlayerObject*, float> s_jump_hold_time_left;
 // 为每个实例保存离地后仍可起跳的剩余帧数（coyote time）
 static std::unordered_map<const PlayerObject*, int> s_coyote_time_left;
 
+static std::unordered_map<const PlayerObject*, int> s_jump_count_map;
+
 // 可调参数
 static constexpr int max_jump_hold_frames = 12;       // 按住跳跃最多允许的帧数（按住越久跳得越高）
 static constexpr float low_gravity_multiplier = 0.4f; // 按住跳跃时的重力倍率（较小，保留上升速度）
@@ -40,6 +42,7 @@ void PlayerObject::Start()
     SetPosition(cf_v2(0.0f, 0.0f));
 
     Scale(0.6f);
+    s_jump_count_map[this] = 2;
 }
 
 void PlayerObject::Update()
@@ -107,9 +110,11 @@ void PlayerObject::Update()
         if (coyote_left < 0) coyote_left = 0;
     }
 
-    // 起跳：只允许在接地或在 coyote 时间内开始一次跳跃
+	int& jump_count = s_jump_count_map[this];// 当前剩余跳跃次数
+
     if (Input::IsKeyInState(CF_KEY_SPACE, KeyState::Down)) {
-        if (grounded || coyote_left > 0) {
+
+        if (grounded || coyote_left > 0||jump_count>0) {
             CF_V2 v = GetVelocity();
             v.y = 8.0f; // 初始跳跃速度（可调）
             SetVelocity(v);
@@ -120,6 +125,10 @@ void PlayerObject::Update()
             // 清理状态，防止重复起跳
             s_grounded_map[this] = false;
             coyote_left = 0;
+
+			// 减少跳跃次数
+            jump_count--;
+            if (jump_count < 0) jump_count = 0;
         }
     }
 
@@ -172,6 +181,8 @@ void PlayerObject::OnCollisionEnter(const ObjManager::ObjToken& other_token, con
             s_jump_hold_time_left[this] = 0.0f;
             // 着地时恢复 coyote（方便下一次离地）
             s_coyote_time_left[this] = coyote_time_frames;
+            // 着地时重置跳跃次数
+            s_jump_count_map[this] = 2;
         }
     }
 }
@@ -189,6 +200,7 @@ void PlayerObject::OnCollisionStay(const ObjManager::ObjToken& other_token, cons
         s_grounded_map[this] = true;
         s_jump_hold_time_left[this] = 0.0f;
         s_coyote_time_left[this] = coyote_time_frames;
+        s_jump_count_map[this] = 2;
     }
 }
 

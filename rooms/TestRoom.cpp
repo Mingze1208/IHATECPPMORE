@@ -11,6 +11,8 @@
 #include "spike.h"
 #include "down_spike.h"
 #include "checkpoint.h"
+#include "diagonal_move_spike.h"
+#include "diagonal_move_spike_left.h"
 
 class TestRoom : public BaseRoom {
 public:
@@ -32,6 +34,12 @@ public:
 		auto standing_spike1_token = objs.Create<Spike>(CF_V2(154.0f, -324.0f));
 		auto standing_down_spike1_token = objs.Create<DownSpike>(CF_V2(200.0f, -324.0f));
 
+		// 斜向右上移动的刺
+		auto diagonal_right_spike_token = objs.Create<DiogonalRigMoveSpike>(CF_V2(0.0f, -200.0f));
+
+		// 斜着左上移动的刺
+
+		auto diagonal_left_spike_token = objs.Create<DiogonalLefMoveSpike>(CF_V2(0.0f, +200.0f));
 		// 创建背景对象
 		auto background_token = objs.Create<Backgroud>();
 
@@ -47,6 +55,10 @@ public:
 		for (float y = -hh; y < hh; y += 36) {
 			objs.Create<BlockObject>(cf_v2(-hw, y), false);
 		}
+		for (float y = -hh; y < hh; y += 36) {
+			objs.Create<BlockObject>(cf_v2(-hw + 72, y), false);
+		}
+
 		for (float y = -hh; y < hh; y += 36) {
 			objs.Create<BlockObject>(cf_v2(hw - 36.0f, y), false);
 		}

@@ -8,7 +8,7 @@
 
 class PlayerObject : public BaseObject {
 public:
-    PlayerObject() noexcept : BaseObject() {}
+    PlayerObject(float x = 0.0f,float y = 0.0f) noexcept :first_position_x(x),first_position_y(y) ,BaseObject() {}
     ~PlayerObject() noexcept {}
 
     void Start() override;
@@ -21,6 +21,8 @@ private:
 	bool grounded = false;
 	bool double_jump_ready = true;
 	float jump_input_timer = 0.0f;
+	float first_position_x;
+	float first_position_y;
 };
 
 #if TESTER

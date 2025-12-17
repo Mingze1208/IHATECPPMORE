@@ -12,6 +12,8 @@
 #include "down_spike.h"
 #include "checkpoint.h"
 
+#include "globalplayer.h"
+
 class TestRoom : public BaseRoom {
 public:
 	TestRoom() noexcept {}
@@ -23,9 +25,14 @@ public:
 
 		// 为简短调用创建引用别名
 		auto& objs = ObjManager::Instance();
+		auto& g_player = GlobalPlayer::Instance();
+
+		// 预设玩家复活点位置
+		g_player.SetRespawnPoint(cf_v2(-300.0f, 0.0f));
 
 		// 使用 ObjManager 创建对象：现在返回 token（ObjectToken）
-		auto player_token = objs.Create<PlayerObject>();
+		g_player.CreatePlayerAtRespawn();
+		auto checkpoint_token = objs.Create<Checkpoint>(CF_V2(-200.0f, -200.0f));
 		auto spike_token = objs.Create<MoveSpike>();
 		auto up_move_spike_token = objs.Create<UpMoveSpike>();
 		auto down_move_spike_token = objs.Create<DownMoveSpike>();
@@ -34,10 +41,6 @@ public:
 
 		// 创建背景对象
 		auto background_token = objs.Create<Backgroud>();
-
-		// 记录上一个（或默认） checkpoint 的位置，用于玩家复活/传送使用
-		// -当前记默认位置为
-		CF_V2 last_checkpoint_pos = cf_v2(-300.0f, 0.0f);
 
 		// 创建方块对象。
 		// -构造函数传参方式（位置、是否为草坪）
@@ -63,8 +66,12 @@ public:
 
 	// 在这里添加房间更新逻辑
 	void RoomUpdate() override {
-		if (Input::IsKeyInState(CF_KEY_P, KeyState::Down)) {
+		if (Input::IsKeyInState(CF_KEY_N, KeyState::Down)) {
 			RoomLoader::Instance().Load("EmptyRoom");
+		}
+
+		if (Input::IsKeyInState(CF_KEY_R, KeyState::Down)) {
+			RoomLoader::Instance().Load("TestRoom");
 		}
 	}
 

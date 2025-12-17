@@ -8,8 +8,10 @@
 #include "move_spike.h"
 #include "up_move_spike.h"
 #include "down_move_spike.h"
+#include "rotate_spike.h"
 #include "spike.h"
 #include "down_spike.h"
+#include "lateral_spike.h"
 #include "checkpoint.h"
 
 class TestRoom : public BaseRoom {
@@ -29,8 +31,11 @@ public:
 		auto spike_token = objs.Create<MoveSpike>();
 		auto up_move_spike_token = objs.Create<UpMoveSpike>();
 		auto down_move_spike_token = objs.Create<DownMoveSpike>();
+		auto rotate_spike_token = objs.Create<RotateSpike>();
 		auto standing_spike1_token = objs.Create<Spike>(CF_V2(154.0f, -324.0f));
 		auto standing_down_spike1_token = objs.Create<DownSpike>(CF_V2(200.0f, -324.0f));
+		auto standing_lateral_spike1_token = objs.Create<RightLateralSpike>(CF_V2(-150.0f, 324.0f));
+		auto standing_lateral_spike2_token = objs.Create<LeftLateralSpike>(CF_V2(-150.0f, 0.0f));
 
 		// 创建背景对象
 		auto background_token = objs.Create<Backgroud>();

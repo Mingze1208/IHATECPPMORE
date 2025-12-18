@@ -24,9 +24,10 @@ void DiogonalLefMoveSpike::Start() {
     SetCenteredPoly(vertices);
 
     // 斜向移动的参数设置
-    float move_distance = 200.0f; // 斜向移动的总距离
-    float diagonal_speed = 0.8f;   // 完成一次斜向移动的时间（秒）
-    float wait_time = 0.5f;        // 移动到终点后的等待时间
+
+    float move_distance = 100.0f; // 斜向移动的总距离
+    //float diagonal_speed = 0.5f;   // 完成一次斜向移动的时间（秒）
+    //float wait_time = 0.5f;        // 移动到终点后的等待时间
 
     // 清空并初始化动作序列
     m_act_seq.clear();
@@ -83,7 +84,7 @@ void DiogonalLefMoveSpike::Start() {
 
             // 斜向左下方移动：从右上角移动回初始位置
             CF_V2 top_right_pos = pos + cf_v2(-move_distance, move_distance);
-            CF_V2 new_pos = top_right_pos - cf_v2(move_distance * t, move_distance * t);
+            CF_V2 new_pos = top_right_pos + cf_v2(move_distance * t, -move_distance * t);
             obj->SetPosition(new_pos);
         }
     );

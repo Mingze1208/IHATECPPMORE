@@ -82,9 +82,7 @@ public:
 
 	// 在这里添加房间更新逻辑
 	void RoomUpdate() override {
-		if (Input::IsKeyInState(CF_KEY_T, KeyState::Down)&&
-			Input::IsKeyInState(CF_KEY_E, KeyState::Hold)&&
-			Input::IsKeyInState(CF_KEY_S, KeyState::Hold)) {
+		if (Input::IsKeyInState(CF_KEY_T, KeyState::Down)) {
 			GlobalPlayer::Instance().SetEmergePosition(CF_V2(-DrawUI::half_w + 36 * 4, -DrawUI::half_h + 36 * 2));
 			RoomLoader::Instance().Load("TestRoom");
 		}

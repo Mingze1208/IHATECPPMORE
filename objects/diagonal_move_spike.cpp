@@ -24,9 +24,9 @@ void DiogonalRigMoveSpike::Start() {
     SetCenteredPoly(vertices);
 
     // 斜向移动的参数设置
-    float move_distance = 200.0f; // 斜向移动的总距离
-    float diagonal_speed = 0.8f;   // 完成一次斜向移动的时间（秒）
-    float wait_time = 0.5f;        // 移动到终点后的等待时间
+    float move_distance = 100.0f; // 斜向移动的总距离
+    //float diagonal_speed = 0.8f;   // 完成一次斜向移动的时间（秒）
+    //float wait_time = 0.5f;        // 移动到终点后的等待时间
 
     // 清空并初始化动作序列
     m_act_seq.clear();

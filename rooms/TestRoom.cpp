@@ -17,6 +17,10 @@
 
 #include "globalplayer.h"
 
+
+
+#include "globalplayer.h"
+
 class TestRoom : public BaseRoom {
 public:
 	TestRoom() noexcept {}

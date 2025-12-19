@@ -156,11 +156,8 @@ public:
 		float hw = DrawUI::half_w;
 		float hh = DrawUI::half_h;
 
-		//复活点1
-		objs.Create<Checkpoint>(cf_v2(-hw + 36.0f, -hh + 36.0f));
-
 			//复活点二
-		objs.Create<Checkpoint>(CF_V2(-hw + 0.5*36.0f, -hh + 19 *36.0f));
+		objs.Create<Checkpoint>(CF_V2(-hw + 36.0f, -hh + 20 *36.0f));
 
 		//复活点三
 		objs.Create<Checkpoint>(CF_V2(-hw + (4.5) * 36.0f, -hh + 6 * 36.0f));
@@ -173,13 +170,6 @@ public:
 		if (!g_player.HasRespawnRecord())g_player.SetRespawnPoint(cf_v2(-hw + 36 * 1.5f, -hh + 36 * 2));
 		g_player.Emerge();
 
-
-		////获取玩家位置
-		//auto& player = GlobalPlayer::Instance().Player();
-		//CF_V2 pos = objs[player].GetPosition();
-		//float pos_x = objs[player].GetPosition().x;
-		//float pos_y = objs[player].GetPosition().y;
-
 		//方块系统
 		
 		//静止系统!!!加静止方块时注意要考虑true和false;
@@ -191,15 +181,19 @@ public:
 		}
 
 		//第一列下方的方块
-		for (float y = -hh; y < hh - 5 * 36; y += 72) {
+		objs.Create<BlockObject>(cf_v2(-hw, -hh), false);
+		for (float y = -hh + 144.0f; y < hh - 7 * 36; y += 72) {
 			objs.Create<BlockObject>(cf_v2(-hw, y), false);
 		}
+		objs.Create<BlockObject>(cf_v2(-hw, hh - 5 * 36.0f), false);
+		objs.Create<BlockObject>(cf_v2(-hw + 36.0f, hh - 5 * 36.0f), false);
 
 		//第二列的方块
 		objs.Create<BlockObject>(cf_v2(-hw + 36.0f, -hh),true);
 		
 		//第三列下方的方块
-		for (float y = -hh; y < hh - 6 * 36; y += 72) {
+		objs.Create<BlockObject>(cf_v2(-hw + 72, -hh), false);
+		for (float y = -hh + 144.0f; y < hh - 6 * 36; y += 72) {
 			objs.Create<BlockObject>(cf_v2(-hw + 72, y), false);
 		}
 
@@ -253,9 +247,8 @@ public:
 		//第三十二列方块
 		CreateObject(31, 2, 2, 2);
 
-
 		//第三十三列放块
-		CreateObject(32, 0, 22, 1);
+		CreateObject(32, 6, 22, 1);
 
 		//最后一列的方块
 		{
@@ -326,7 +319,7 @@ public:
 		
 		// 列刺系统
 		//	左边屏幕外的刺
-		 for (float y = -hh; y < hh ; y += 36.0f)
+		 for (float y = -hh + 5 * 36.0f; y < hh ; y += 36.0f)
 		{
 			objs.Create<Spike>(CF_V2(-hw  - 0.5 * 36.0f, y));
 		}
@@ -338,10 +331,10 @@ public:
 		}
 
 		//第二列的竖向移动方块 上面的
-		objs.Create<VerticalMovingSpike>(CF_V2(-hw + 1.5 * 36.0f), 1.0f, 0.1f, 220.0f);
+		objs.Create<VerticalMovingSpike>(CF_V2(-hw + 1.5 * 36.0f, -0.5f * 36), 1.0f, 0.1f, 220.0f);
 
 		//第二列的竖向移动方块 下面的
-		objs.Create<VerticalMovingSpike>(CF_V2(-hw + 1.5 * 36.0f, -hh + 3 * 36.0f), 0.8f, 0.2f, 220.0f);
+		objs.Create<VerticalMovingSpike>(CF_V2(-hw + 1.5 * 36.0f, -hh + 4.5f * 36), 0.8f, 0.2f, 220.0f);
 
 		//中间中方移动的刺 左边的
 		objs.Create<VerticalMovingSpike>(CF_V2( - 3 * 36.0f,36.0f), 1.0f, 0.1f, 120.0f);
@@ -359,8 +352,9 @@ public:
 	}
 
 	void RoomUpdate() override {
-		if (Input::IsKeyInState(CF_KEY_P, KeyState::Down)) {
-			GlobalPlayer::Instance().SetEmergePosition(CF_V2(-DrawUI::half_w + 36 * 2, -DrawUI::half_h + 36 * 2));
+		auto& g = GlobalPlayer::Instance();
+		if (objs.TryGetRegisteration(g.Player()) && objs[g.Player()].GetPosition().x < -DrawUI::half_w) {
+			g.SetEmergePosition(CF_V2(DrawUI::half_w - 36 * 0.3f, objs[g.Player()].GetPosition().y));
 			RoomLoader::Instance().Load("FirstRoom");
 		}
 	}

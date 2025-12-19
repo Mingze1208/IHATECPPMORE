@@ -55,10 +55,12 @@ void FirstDownMoveSpike::Update() {
 
 	CF_V2 pos = objs[player].GetPosition();
 
-	float check_x1 = 396.0f;
-	float check_y1 = -288.0f;
+	float min_x = 392.0f;
+	float max_x = 436.0f;
+	float min_y = -396.0f;
+	float max_y = -288.0f;
 
-	if (pos.x > check_x1  && pos.y < check_y1) {
+	if (inside(pos, min_x, max_x, min_y, max_y)) {
 		// 播放动作序列
 		if(!m_act_seq.is_playing()) m_act_seq.play(this);
 	}
